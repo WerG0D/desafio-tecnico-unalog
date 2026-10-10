@@ -1,0 +1,15 @@
+@baseUrl = http://localhost:5080
+
+### Autocadastro com dados sintéticos
+POST {{baseUrl}}/api/v1/drivers
+Content-Type: application/json
+
+{
+  "name": "Motorista de Teste",
+  "cpf": "529.982.247-25",
+  "phone": "+55 (31) 99999-9999",
+  "email": "motorista@example.com",
+  "cnhNumber": "12345678901",
+  "cnhCategory": "D",
+  "cnhExpirationDate": "2029-12-31"
+}

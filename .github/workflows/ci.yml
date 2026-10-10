@@ -1,0 +1,36 @@
+name: Validação .NET
+
+on:
+  push:
+    branches: [main, develop, 'feature/**', 'release/**', 'hotfix/**']
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build e testes (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Restaurar
+        run: dotnet restore DriverRegistration.slnx
+      - name: Compilar
+        run: dotnet build DriverRegistration.slnx -c Release --no-restore
+      - name: Testar
+        run: dotnet test DriverRegistration.slnx -c Release --no-build --logger trx --results-directory artifacts/test-results
+      - name: Publicar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-${{ matrix.os }}
+          path: artifacts/test-results/*.trx
+          if-no-files-found: ignore
