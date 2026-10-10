@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DriverRegistration.Api/DriverRegistration.Api.csproj" />
+    <Project Path="src/DriverRegistration.Application/DriverRegistration.Application.csproj" />
+    <Project Path="src/DriverRegistration.Domain/DriverRegistration.Domain.csproj" />
+    <Project Path="src/DriverRegistration.Infrastructure/DriverRegistration.Infrastructure.csproj" />
+  </Folder>
+</Solution>

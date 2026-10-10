@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/TestResults/
+.vs/
+.idea/
+*.user
+*.suo
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+artifacts/
+.local/
+**/appsettings.Local.json
+.env

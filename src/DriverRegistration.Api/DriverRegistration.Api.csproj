@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\DriverRegistration.Application\DriverRegistration.Application.csproj" />
+    <ProjectReference Include="..\DriverRegistration.Infrastructure\DriverRegistration.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
