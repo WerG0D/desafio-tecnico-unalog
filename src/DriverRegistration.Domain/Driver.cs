@@ -74,7 +74,7 @@ public sealed class Driver
 
         var normalizedEmail = (email ?? string.Empty).Trim().ToLowerInvariant();
         if (normalizedEmail.Length is 0 or > 254
-            || normalizedEmail.Any(char.IsWhiteSpace)
+            || normalizedEmail.Any(character => char.IsWhiteSpace(character) || char.IsControl(character))
             || !MailAddress.TryCreate(normalizedEmail, out var parsedEmail)
             || parsedEmail.DisplayName.Length != 0
             || !string.Equals(parsedEmail.Address, normalizedEmail, StringComparison.Ordinal))
