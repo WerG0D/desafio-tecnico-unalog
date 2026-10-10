@@ -82,6 +82,7 @@ public sealed class DriverApiTests
     [InlineData("cpf", "11111111111")]
     [InlineData("phone", "00999999999")]
     [InlineData("email", "invalido")]
+    [InlineData("email", "\"a\u0001b\"@example.com")]
     [InlineData("cnhNumber", "1")]
     [InlineData("cnhCategory", "F")]
     [InlineData("cnhExpirationDate", "2026-10-10")]
