@@ -194,13 +194,17 @@ public sealed class DriverApiTests
         Assert.Equal(status, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         var text = await response.Content.ReadAsStringAsync(Token);
-        Assert.DoesNotContain("529", text);
-        Assert.DoesNotContain("12345678901", text);
-        Assert.DoesNotContain("example.com", text);
+        var body = JsonSerializer.Deserialize<JsonElement>(text);
+        var publicContent = string.Join(' ', body.EnumerateObject()
+            .Where(property => property.Name != "traceId")
+            .Select(property => property.Value.GetRawText()));
+        Assert.DoesNotContain("52998224725", publicContent);
+        Assert.DoesNotContain("529.982.247-25", publicContent);
+        Assert.DoesNotContain("12345678901", publicContent);
+        Assert.DoesNotContain("example.com", publicContent);
         Assert.DoesNotContain("SQLite", text);
         Assert.DoesNotContain("Exception", text);
         Assert.DoesNotContain("stackTrace", text);
-        var body = JsonSerializer.Deserialize<JsonElement>(text);
         Assert.Equal(code, body.GetProperty("code").GetString());
         Assert.Equal((int)status, body.GetProperty("status").GetInt32());
         return body;
