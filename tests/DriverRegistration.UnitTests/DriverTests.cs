@@ -45,6 +45,8 @@ public sealed class DriverTests
     [InlineData("ana")]
     [InlineData("ana@")]
     [InlineData("ana @example.com")]
+    [InlineData("\"a\u0001b\"@example.com")]
+    [InlineData("\"a\u007fb\"@example.com")]
     public void Create_InvalidEmail_Rejects(string email) => AssertInvalid("email", email: email);
 
     [Theory]
@@ -92,6 +94,8 @@ public sealed class DriverTests
     [InlineData("1234567890")]
     [InlineData("123456789012")]
     [InlineData("1234567890a")]
+    [InlineData("00000000000")]
+    [InlineData("11111111111")]
     public void Create_InvalidCnhNumber_Rejects(string number)
     {
         var exception = Assert.Throws<DomainValidationException>(() => Create(cnhNumber: number));
@@ -122,6 +126,18 @@ public sealed class DriverTests
 
     [Fact]
     public void Create_NameWithSupplementaryUnicode_AcceptsTwoCharacters() => Assert.Equal("𠮷田", Create(name: "𠮷田").Name);
+
+    [Theory]
+    [InlineData(254, true)]
+    [InlineData(255, false)]
+    public void Create_EmailLength_EnforcesNormalizedLimit(int length, bool accepted)
+    {
+        var email = "a@" + new string('b', 63) + "." + new string('c', 63) + "." + new string('d', 63)
+            + "." + new string('e', length - 194);
+        Assert.Equal(length, email.Length);
+        if (accepted) Assert.Equal(email, Create(email: "  " + email + "  ").Email);
+        else AssertInvalid("email", email: email);
+    }
 
     private static void AssertInvalid(string field, string? name = "Ana Silva", string? cpf = "52998224725",
         string email = "ana@example.com", string category = "D", string phone = "31999999999")

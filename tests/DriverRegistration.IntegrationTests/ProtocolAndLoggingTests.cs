@@ -37,6 +37,15 @@ public sealed class ProtocolAndLoggingTests
         foreach (var field in schema.GetProperty("properties").EnumerateObject())
             Assert.Equal("string", field.Value.GetProperty("type").GetString());
         Assert.Equal("date", schema.GetProperty("properties").GetProperty("cnhExpirationDate").GetProperty("format").GetString());
+        var properties = schema.GetProperty("properties");
+        Assert.Contains("200", properties.GetProperty("name").GetProperty("description").GetString()!);
+        Assert.Contains("254", properties.GetProperty("email").GetProperty("description").GetString()!);
+        Assert.Contains("America/Sao_Paulo", properties.GetProperty("cnhExpirationDate").GetProperty("description").GetString()!);
+        foreach (var field in new[] { "cpf", "phone", "cnhNumber", "cnhCategory" })
+            Assert.False(string.IsNullOrWhiteSpace(properties.GetProperty(field).GetProperty("pattern").GetString()));
+        var categoryPattern = properties.GetProperty("cnhCategory").GetProperty("pattern").GetString()!;
+        Assert.Matches(categoryPattern, " ab ");
+        Assert.DoesNotMatch(categoryPattern, "F");
     }
 
     [Theory]
