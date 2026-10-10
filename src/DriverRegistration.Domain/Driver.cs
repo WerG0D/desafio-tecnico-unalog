@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DriverRegistration.Domain;
@@ -42,9 +43,13 @@ public sealed class Driver
         var errors = new Dictionary<string, string[]>();
         var normalizedName = string.Join(' ', (name ?? string.Empty)
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        if (normalizedName.Length is < 2 or > 200)
+        if (normalizedName.EnumerateRunes().Count() is < 2 or > 200)
         {
             errors["name"] = ["O nome deve conter entre 2 e 200 caracteres."];
+        }
+        else if (normalizedName.Any(char.IsControl))
+        {
+            errors["name"] = ["O nome não pode conter caracteres de controle."];
         }
 
         var normalizedCpf = (cpf ?? string.Empty).Trim();
