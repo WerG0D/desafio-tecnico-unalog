@@ -5,4 +5,8 @@
     <Project Path="src/DriverRegistration.Domain/DriverRegistration.Domain.csproj" />
     <Project Path="src/DriverRegistration.Infrastructure/DriverRegistration.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DriverRegistration.IntegrationTests/DriverRegistration.IntegrationTests.csproj" />
+    <Project Path="tests/DriverRegistration.UnitTests/DriverRegistration.UnitTests.csproj" />
+  </Folder>
 </Solution>
