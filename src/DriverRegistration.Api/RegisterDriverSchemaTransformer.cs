@@ -1,15 +1,29 @@
+using System.Text.Json.Nodes;
+using DriverRegistration.Application;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
 namespace DriverRegistration.Api;
 
-public sealed class RegisterDriverSchemaTransformer : IOpenApiSchemaTransformer
+public sealed class RegisterDriverSchemaTransformer(IRegistrationDateProvider dateProvider) : IOpenApiSchemaTransformer
 {
     public Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context,
         CancellationToken cancellationToken)
     {
         if (context.JsonTypeInfo.Type != typeof(RegisterDriverRequest) || schema.Properties is null)
             return Task.CompletedTask;
+
+        var example = new JsonObject
+        {
+            ["name"] = "Motorista Exemplo",
+            ["cpf"] = "111.444.777-35",
+            ["phone"] = "+55 (11) 99999-9999",
+            ["email"] = "motorista.exemplo@example.com",
+            ["cnhNumber"] = "98765432100",
+            ["cnhCategory"] = "D",
+            ["cnhExpirationDate"] = dateProvider.Today.AddYears(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+        };
+        schema.Example = example;
 
         Describe("name", "Nome entre 2 e 200 caracteres Unicode após normalizar espaços; sem controles.", minLength: 2);
         Describe("cpf", "11 dígitos com verificadores válidos, únicos; aceita máscara e espaços externos.",
@@ -34,6 +48,7 @@ public sealed class RegisterDriverSchemaTransformer : IOpenApiSchemaTransformer
                 property.Description = description;
                 property.Pattern = pattern;
                 property.MinLength = minLength;
+                property.Example = example[field]?.DeepClone();
             }
         }
     }
