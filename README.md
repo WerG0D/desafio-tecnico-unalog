@@ -177,16 +177,3 @@ dotnet test tests/DriverRegistration.IntegrationTests -c Release
 ```
 
 Os testes de integração utilizam SQLite em memória para exercitar o comportamento real do banco, incluindo as restrições de unicidade.
-
-## Decisões de implementação
-
-Algumas escolhas feitas durante o desenvolvimento:
-
-- **Minimal APIs:** o projeto possui apenas um endpoint de negócio, então não vi necessidade de criar controllers.
-- **EF Core com SQLite:** atende ao requisito de persistência e permite evoluir o modelo utilizando migrations.
-- **Validações no domínio:** a entidade `Driver` é responsável por manter seus dados consistentes, independentemente da camada que a utiliza.
-- **TimeProvider:** permite testar regras relacionadas à validade da CNH sem depender da data do computador.
-- **Índices únicos:** a verificação de duplicidade não fica restrita à lógica da aplicação.
-- **ProblemDetails:** mantém um padrão para as respostas de erro.
-
-A implementação foi mantida dentro do escopo solicitado. Recursos como autenticação, verificação oficial de documentos e gerenciamento de motoristas podem ser adicionados posteriormente, conforme as necessidades da plataforma.
