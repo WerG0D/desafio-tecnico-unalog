@@ -1,97 +1,103 @@
-# Autocadastro de motoristas
+# Driver Registration API
 
-API REST para a primeira etapa de uma plataforma logística: o próprio motorista informa
-seus dados e realiza o cadastro. O único endpoint de negócio é `POST /api/v1/drivers`.
-Não há consulta, alteração ou exclusão de motoristas.
+API REST para autocadastro de motoristas.
 
-## Tecnologias e arquitetura
+A aplicação permite que um motorista cadastre seus dados pessoais e informações da CNH.
 
-.NET 10, C# 14, ASP.NET Core Minimal APIs, EF Core, SQLite, OpenAPI e xUnit v3 com VSTest.
-O SDK é fixado em `global.json`. Pacotes têm versões explícitas nos projetos e o comando
-`dotnet ef` tem manifesto local, sem exigir instalação global.
+## Tecnologias
 
-```mermaid
-flowchart LR
-    API[API: HTTP e composição] --> Application[Application: cadastro]
-    API --> Infrastructure[Infrastructure: EF Core e SQLite]
-    Infrastructure --> Application
-    Application --> Domain[Domain: entidade e invariantes]
-    Infrastructure --> SQLite[(SQLite)]
-```
+- .NET 10 / C# 14
+- ASP.NET Core Minimal APIs
+- Entity Framework Core
+- SQLite
+- xUnit v3
+- OpenAPI
 
-| Camada | Responsabilidade |
+## Estrutura do projeto
+
+O projeto segue os princípios de Clean Architecture, separando as regras de negócio da API e da persistência.
+
+| Projeto | Responsabilidade |
 | --- | --- |
-| Domain | Entidade `Driver`, validação e normalização; sem dependências de frameworks externos. |
-| Application | Caso de uso `RegisterDriver`, resultado e contratos de persistência e data civil; referencia apenas Domain. |
-| Infrastructure | `DriverDbContext`, repositório, índices únicos, restrições e migrations. |
-| API | Contratos HTTP, composição de dependências, relógio, OpenAPI e tradução de erros. |
+| **Domain** | Entidade `Driver`, validações e regras de negócio. |
+| **Application** | Caso de uso de cadastro e interfaces de persistência. |
+| **Infrastructure** | Acesso ao SQLite com EF Core, repositório e migrations. |
+| **Api** | Endpoints HTTP, injeção de dependências e tratamento de erros. |
 
-Uma entidade encapsulada com fábrica garante as invariantes. Não foram criados Value
-Objects para cada string porque o único caso de uso não justifica esse custo. O repositório
-tem somente uma operação de inserção; não há repositório genérico, MediatR, AutoMapper,
-mensageria ou camadas adicionais. O `DbContext` tem duração por requisição.
+As dependências seguem em direção ao domínio. A camada de infraestrutura implementa as interfaces definidas pela aplicação.
 
-## Pré-requisitos e execução
+Optei por manter a estrutura simples, sem repositórios genéricos ou abstrações desnecessárias. Eu preferi usar um modelo Minimal, pq como é apenas um endpoint não fazia sentido o uso de Controller.
 
-Instale o SDK **.NET 10.0.301** (ou patch compatível da mesma faixa, conforme `global.json`)
-e Git. Não é necessário instalar servidor de banco de dados.
+## Como executar
 
-Na raiz do repositório:
+### Pré-requisitos
 
-```sh
+- .NET SDK 10.0.301 ou versão compatível com o `global.json`
+- Git
+
+Na raiz do projeto:
+
+```bash
 dotnet restore DriverRegistration.slnx
-dotnet build DriverRegistration.slnx -c Release --no-restore
-dotnet test DriverRegistration.slnx -c Release --no-build
+dotnet build DriverRegistration.slnx
 dotnet run --project src/DriverRegistration.Api --launch-profile http
 ```
 
-A API fica em `http://localhost:5080`. O perfil `http` define o ambiente Development e
-aplica as migrations na inicialização. O arquivo `drivers.db` é criado no diretório de
-conteúdo do projeto API ao usar esse comando. O arquivo de execução não é versionado.
-O contrato OpenAPI fica em `http://localhost:5080/openapi/v1.json`, somente em Development.
+A API estará disponível em:
 
-### Migrations e banco em outros ambientes
+`http://localhost:5080`
 
-Em produção, migrations não são executadas automaticamente. Aplique-as explicitamente
-antes de iniciar a API, com a mesma conexão usada pela aplicação:
+No ambiente de desenvolvimento, as migrations são aplicadas automaticamente na inicialização. O banco `drivers.db` será criado no diretório de conteúdo da API.
 
-```sh
+A especificação OpenAPI pode ser acessada em:
+
+`http://localhost:5080/openapi/v1.json`
+
+### Testar pelo Swagger
+
+Na raiz do projeto, inicie a API com o perfil de desenvolvimento:
+
+```bash
+dotnet run --project src/DriverRegistration.Api --launch-profile http
+```
+
+Mantenha o terminal aberto e acesse [http://localhost:5080/swagger/index.html](http://localhost:5080/swagger/index.html) no navegador. O Swagger está disponível somente no ambiente Development.
+
+1. Expanda **POST /api/v1/drivers**.
+2. Clique em **Try it out**.
+3. Preencha o JSON usando o exemplo exibido ou dados sintéticos válidos. A validade da CNH deve ser posterior à data atual.
+4. Clique em **Execute**.
+5. Consulte **Server response** para verificar o código HTTP e o corpo da resposta.
+
+Um cadastro válido retorna **201 Created**. Repetir um CPF, e-mail ou CNH já cadastrado retorna **409 Conflict**. Dados inválidos retornam **400 Bad Request**, com indicação dos campos que precisam ser corrigidos.
+
+Para testar um novo cadastro, utilize outro CPF válido, outro e-mail e outro número de CNH. Os registros permanecem no SQLite após reiniciar a API. Para encerrar a aplicação, pressione **Ctrl+C** no terminal.
+
+### Migrations
+
+O projeto utiliza uma ferramenta local do EF Core, que pode ser restaurada com:
+
+```bash
 dotnet tool restore
-dotnet ef database update --project src/DriverRegistration.Infrastructure -- "Data Source=drivers.db"
 ```
 
-O diretório efetivo da ferramenta EF pode ser o projeto de inicialização. Para evitar que API e
-ferramenta usem arquivos diferentes, prefira uma conexão com **caminho absoluto** na variável
-`ConnectionStrings__Drivers`. A factory de design usa primeiro o argumento depois de `--`,
-depois essa variável; sem ambos usa um banco efêmero em memória para geração de migrations.
+Para aplicar as migrations manualmente:
 
-Exemplo no PowerShell, a partir da raiz:
-
-```powershell
-$env:ConnectionStrings__Drivers = "Data Source=$((Join-Path (Get-Location) 'drivers.db'))"
+```bash
 dotnet ef database update --project src/DriverRegistration.Infrastructure
-$env:ASPNETCORE_ENVIRONMENT = 'Production'
-dotnet run --project src/DriverRegistration.Api --no-launch-profile -- --urls http://localhost:5080
 ```
 
-Para criar uma nova migration após uma alteração de modelo:
+Em ambientes diferentes de Development, configure `ConnectionStrings__Drivers` com o caminho do banco antes de aplicar as migrations e iniciar a aplicação.
 
-```sh
-dotnet ef migrations add NomeDaAlteracao --project src/DriverRegistration.Infrastructure
-dotnet ef migrations has-pending-model-changes --project src/DriverRegistration.Infrastructure
-dotnet ef migrations script --project src/DriverRegistration.Infrastructure --output artifacts/schema.sql
-```
+As migrations não são executadas automaticamente em produção.
 
-Crie `artifacts` antes do último comando. O SQLite não suporta o script idempotente do EF;
-use `database update` para aplicar apenas migrations pendentes. Revise migrations antes
-de aplicá-las a dados que precisam ser preservados.
+## Endpoint
 
-## Contrato HTTP
+### POST /api/v1/drivers
 
-Todos os campos abaixo são obrigatórios. Strings não podem ser vazias. A data é civil,
-no formato `yyyy-MM-dd`, sem hora ou deslocamento de fuso.
+Realiza o cadastro de um motorista.
 
-Exemplo com dados sintéticos apenas para teste local:
+Exemplo de requisição:
 
 ```json
 {
@@ -105,17 +111,7 @@ Exemplo com dados sintéticos apenas para teste local:
 }
 ```
 
-O arquivo `examples/register-driver.http` contém uma requisição pronta para clientes HTTP
-de IDE. Também é possível salvar o JSON e enviar com:
-
-```sh
-curl -i http://localhost:5080/api/v1/drivers -H "Content-Type: application/json" --data-binary @examples/driver.json
-```
-
-No Windows PowerShell, use `curl.exe` quando `curl` for um alias. Atualize a validade do
-exemplo caso a data já tenha passado. Repetir o mesmo cadastro retorna conflito.
-
-**201 Created** — sem `Location`, pois não existe endpoint de consulta:
+Resposta de sucesso — `201 Created`:
 
 ```json
 {
@@ -124,91 +120,73 @@ exemplo caso a data já tenha passado. Repetir o mesmo cadastro retorna conflito
 }
 ```
 
-**400 Bad Request** — `application/problem+json`, erros por campo:
+### Respostas HTTP
 
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "Dados de cadastro inválidos.",
-  "status": 400,
-  "errors": { "cpf": ["Informe um CPF válido."] },
-  "code": "validation_error",
-  "traceId": "identificador-da-requisicao"
-}
-```
-
-JSON malformado, tipos incorretos e datas não interpretáveis também retornam 400, com
-`errors.body`. Dados de negócio inválidos usam os nomes dos campos em camelCase.
-
-**409 Conflict** — não identifica qual dado único já foi registrado:
-
-```json
-{
-  "title": "Conflito de cadastro.",
-  "status": 409,
-  "detail": "Já existe um cadastro com um ou mais dos dados únicos informados.",
-  "code": "driver_conflict",
-  "traceId": "identificador-da-requisicao"
-}
-```
-
-**500 Internal Server Error** — `code: internal_error`, mensagem genérica, sem stack trace
-ou dados pessoais. Falhas inesperadas do banco não são convertidas em conflitos.
-Conteúdo diferente de JSON retorna **415**, `code: unsupported_media_type`.
-
-## Regras de negócio
-
-| Campo | Regra e normalização |
+| Status | Descrição |
 | --- | --- |
-| Nome | Entre 2 e 200 caracteres Unicode após remover espaços externos e condensar espaços internos; rejeita controles remanescentes. Aceita acentos, apóstrofos, nomes compostos e nomes únicos; não exige sobrenome. |
-| CPF | 11 dígitos ASCII ou máscara `000.000.000-00`; valida verificadores e rejeita dígitos repetidos. Persiste apenas dígitos, com índice único. |
-| Telefone | DDD brasileiro da lista de códigos aceitos + 8 dígitos (fixo iniciado em 2–5) ou 9 dígitos (celular iniciado em 9). Aceita parênteses, hífen e prefixo `+55`. Persiste 10 ou 11 dígitos nacionais, sem prefixo internacional. Não valida existência ou titularidade. |
-| E-mail | Até 254 caracteres, formato validado por `MailAddress`, sem nome de exibição ou espaços; trim e minúsculas invariantes. Unicidade considera a forma normalizada. A decisão de ignorar caixa também na parte local é uma regra do produto. |
-| CNH | Exatamente 11 dígitos ASCII; rejeita sequências de dígitos iguais. Índice único. Não verifica dígitos verificadores nem autenticidade em base oficial. |
-| Categoria | A, B, C, D, E, AB, AC, AD ou AE; trim e maiúsculas. Não inclui ACC, que é autorização distinta de categoria de CNH. |
-| Validade | Estritamente posterior ao dia atual em `America/Sao_Paulo`; hoje é inválido. `DateOnly` evita deslocamento da data recebida. `TimeProvider` permite testes determinísticos. |
+| `201` | Motorista cadastrado. |
+| `400` | Dados inválidos ou requisição malformada. |
+| `409` | CPF, e-mail ou CNH já cadastrados. |
+| `415` | Tipo de conteúdo não suportado. |
+| `500` | Erro interno. |
 
-DDDs aceitos: 11–19, 21, 22, 24, 27, 28, 31–35, 37, 38, 41–49, 51, 53–55,
-61–69, 71, 73–75, 77, 79, 81–89 e 91–99. Não é feita consulta a cadastro telefônico.
+Os erros seguem o formato `ProblemDetails`. Nos erros de validação, a resposta identifica os campos inválidos.
 
-### Integridade, concorrência e privacidade
+O projeto também inclui exemplos de requisição na pasta `examples/`.
 
-A inserção é tentada diretamente e a restrição de unicidade do SQLite é a autoridade
-final para CPF, e-mail e CNH. Não existe a janela de corrida de uma pré-consulta seguida
-de inserção. Violações dos índices de cadastro são traduzidas em 409; outras falhas
-continuam no caminho de erro inesperado. O banco também possui restrições básicas de
-formato e comprimento, além das invariantes completas do domínio.
+## Validações
 
-Respostas de sucesso contêm somente ID e mensagem. As mensagens de validação não repetem
-valores recebidos. Logs de erro da API incluem tipo da exceção e identificador de rastreio,
-sem mensagem interna, stack trace ou payload; diagnósticos automáticos dessas exceções
-são suprimidos. Logs EF com exceções de comandos/persistência são desativados para evitar
-vazamento indireto de valores. Não habilite logs de corpo HTTP ou dados sensíveis do EF.
+As validações são aplicadas antes da persistência. Os dados são normalizados para evitar inconsistências entre cadastros.
 
-## Testes e integração contínua
+| Campo | Regra |
+| --- | --- |
+| Nome | Obrigatório, entre 2 e 200 caracteres. Aceita nomes com acentos e caracteres Unicode. |
+| CPF | Validação dos dígitos verificadores e unicidade. |
+| Telefone | Número brasileiro válido, com DDD. Aceita telefone fixo e celular. |
+| E-mail | Formato válido, normalização e unicidade. |
+| CNH | 11 dígitos numéricos e unicidade. |
+| Categoria | A, B, C, D, E, AB, AC, AD ou AE. |
+| Validade | Deve ser posterior à data atual. |
 
-```sh
+CPF, telefone, e-mail e categoria são normalizados antes do armazenamento.
+
+As restrições de unicidade também são aplicadas diretamente no SQLite, evitando que cadastros simultâneos gerem registros duplicados.
+
+A validação da CNH considera o formato informado, mas não consulta bases oficiais nem verifica seus dígitos verificadores.
+
+Para verificar a validade da habilitação, a aplicação considera a data civil no fuso `America/Sao_Paulo`.
+
+## Testes
+
+Os testes estão divididos em dois projetos:
+
+- **UnitTests:** regras do domínio, normalização e validações.
+- **IntegrationTests:** endpoint HTTP, persistência no SQLite e tratamento de erros.
+
+Para executar todos os testes:
+
+```bash
 dotnet test DriverRegistration.slnx -c Release
+```
+
+Também é possível executá-los separadamente:
+
+```bash
 dotnet test tests/DriverRegistration.UnitTests -c Release
 dotnet test tests/DriverRegistration.IntegrationTests -c Release
 ```
 
-Unitários validam invariantes, normalização e resultados do caso de uso. Integração utiliza
-`WebApplicationFactory`, SQLite relacional e migrations reais, com isolamento entre testes.
-Não é usado o provider EF InMemory. Os testes não dependem da data do computador.
-O workflow em `.github/workflows/ci.yml` restaura, compila e executa a suíte em Linux e Windows.
+Os testes de integração utilizam SQLite em memória para exercitar o comportamento real do banco, incluindo as restrições de unicidade.
 
-## Limitações e evoluções
+## Decisões de implementação
 
-- Prova técnica de autocadastro: sem autenticação, confirmação de e-mail/SMS, consulta oficial
-  de documentos ou comprovação de titularidade. Um CPF matematicamente válido não comprova identidade.
-- O perfil HTTP é para execução local. Uma implantação pública exige HTTPS no servidor ou
-  proxy, configuração de `AllowedHosts`, controle de abuso e uma política de privacidade/retenção.
-- SQLite persiste dados pessoais em texto claro. Proteja arquivo e backups com permissões
-  e criptografia de disco; não há criptografia de campos nesta entrega.
-- SQLite admite apenas um escritor por vez. Unicidade é protegida, mas alto volume pode
-  exigir outro banco; falhas de bloqueio não são disfarçadas como duplicidade.
-- Não há semântica de idempotência por chave: repetir uma requisição concluída retorna 409.
-- O tratamento genérico de conflito reduz detalhes expostos, mas o endpoint público ainda
-  pode permitir inferências por tentativas; controle de abuso é uma evolução de implantação.
+Algumas escolhas feitas durante o desenvolvimento:
 
+- **Minimal APIs:** o projeto possui apenas um endpoint de negócio, então não vi necessidade de criar controllers.
+- **EF Core com SQLite:** atende ao requisito de persistência e permite evoluir o modelo utilizando migrations.
+- **Validações no domínio:** a entidade `Driver` é responsável por manter seus dados consistentes, independentemente da camada que a utiliza.
+- **TimeProvider:** permite testar regras relacionadas à validade da CNH sem depender da data do computador.
+- **Índices únicos:** a verificação de duplicidade não fica restrita à lógica da aplicação.
+- **ProblemDetails:** mantém um padrão para as respostas de erro.
+
+A implementação foi mantida dentro do escopo solicitado. Recursos como autenticação, verificação oficial de documentos e gerenciamento de motoristas podem ser adicionados posteriormente, conforme as necessidades da plataforma.

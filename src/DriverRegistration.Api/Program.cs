@@ -28,6 +28,7 @@ app.UseStatusCodePages(async statusContext =>
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Autocadastro de motoristas v1"));
     if (builder.Configuration.GetValue<bool>("Database:ApplyMigrations"))
     {
         await using var scope = app.Services.CreateAsyncScope();
